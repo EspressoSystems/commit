@@ -1,3 +1,9 @@
+// Copyright (c) 2022 Espresso Systems (espressosys.com)
+// This file is part of the Commit library.
+
+// You should have received a copy of the MIT License
+// along with the Commit library. If not, see <https://mit-license.org/>.
+
 use arbitrary::{Arbitrary, Unstructured};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use bitvec::vec::BitVec;
