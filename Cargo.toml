@@ -2,7 +2,8 @@
 name = "commit"
 version = "0.1.0"
 edition = "2018"
-authors = ["Joe Doyle <joe@translucence.net>, Jeb Bearer <jeb.bearer@translucence.net>"]
+authors = ["Espresso Systems <hello@espressosys.com>"]
+license = "MIT"
 
 [dependencies]
 arbitrary = { version="1.0", features=["derive"] }
