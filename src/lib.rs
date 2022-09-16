@@ -8,11 +8,14 @@ use arbitrary::{Arbitrary, Unstructured};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use bitvec::vec::BitVec;
 use core::marker::PhantomData;
+use derivative::Derivative;
 use generic_array::{ArrayLength, GenericArray};
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use sha3::digest::Digest;
 use sha3::Keccak256;
 use std::convert::{TryFrom, TryInto};
+use std::fmt::Debug;
+use std::hash::Hash;
 
 type Array = [u8; 32];
 
@@ -47,59 +50,47 @@ mod tests {
 }
 
 pub trait Committable {
-    fn commit(&self) -> Commitment<Self>;
+    type Commitment: Clone
+        + Copy
+        + Debug
+        + Hash
+        + PartialEq
+        + Eq
+        + AsRef<[u8]>
+        + Serialize
+        + DeserializeOwned
+        + Send
+        + Sync;
+    fn commit(&self) -> Self::Commitment;
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(bound = "")]
-pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<T>);
+pub type Commitment<T> = <T as Committable>::Commitment;
 
-impl<T: ?Sized + Committable> AsRef<[u8]> for Commitment<T> {
+#[derive(Derivative, Serialize, Deserialize)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(bound = "")]
+pub struct HashCommitment<T: ?Sized + Committable>(Array, PhantomData<fn(T) -> ()>);
+
+impl<T: ?Sized + Committable> AsRef<[u8]> for HashCommitment<T> {
     fn as_ref(&self) -> &[u8] {
         &self.0
     }
 }
 
-// we need custom impls because `T` doesn't actually need to satisfy
-// these traits
-impl<T: ?Sized + Committable> core::fmt::Debug for Commitment<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        f.write_str("Commitment<")?;
-        f.write_str(std::any::type_name::<T>())?;
-        f.write_str(">(")?;
-        f.write_str(&hex::encode(&self.0))?;
-        f.write_str(")")
-    }
-}
-
-impl<T: ?Sized + Committable> Clone for Commitment<T> {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1)
-    }
-}
-impl<T: ?Sized + Committable> Copy for Commitment<T> {}
-impl<T: ?Sized + Committable> PartialEq for Commitment<T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.0 == rhs.0
-    }
-}
-impl<T: ?Sized + Committable> Eq for Commitment<T> {}
-impl<T: ?Sized + Committable> core::hash::Hash for Commitment<T> {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        self.0.hash(h)
-    }
-}
-
-impl<T: ?Sized + Committable> Commitment<T> {
+impl<T: ?Sized + Committable> HashCommitment<T> {
     pub fn into_bits(self) -> BitVec<bitvec::order::Lsb0, u8> {
         BitVec::try_from(self.0.to_vec()).unwrap()
     }
 }
 
-impl<T: ?Sized + Committable> CanonicalSerialize for Commitment<T> {
+impl<T: ?Sized + Committable> CanonicalSerialize for HashCommitment<T> {
     fn serialize<W: Write>(&self, mut w: W) -> Result<(), SerializationError> {
         w.write_all(&self.0).map_err(SerializationError::from)
     }
@@ -109,21 +100,21 @@ impl<T: ?Sized + Committable> CanonicalSerialize for Commitment<T> {
     }
 }
 
-impl<T: ?Sized + Committable> CanonicalDeserialize for Commitment<T> {
+impl<T: ?Sized + Committable> CanonicalDeserialize for HashCommitment<T> {
     fn deserialize<R: Read>(mut r: R) -> Result<Self, SerializationError> {
         let mut buf = [0u8; 32];
         r.read_exact(&mut buf)?;
-        Ok(Commitment(buf, Default::default()))
+        Ok(HashCommitment(buf, Default::default()))
     }
 }
 
-impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
-    fn from(v: Commitment<T>) -> Self {
+impl<T: ?Sized + Committable> From<HashCommitment<T>> for [u8; 32] {
+    fn from(v: HashCommitment<T>) -> Self {
         v.0
     }
 }
 
-impl<'a, T: ?Sized + Committable> Arbitrary<'a> for Commitment<T> {
+impl<'a, T: ?Sized + Committable> Arbitrary<'a> for HashCommitment<T> {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Self(u.arbitrary()?, PhantomData::default()))
     }
@@ -178,24 +169,24 @@ impl<T: Committable> RawCommitmentBuilder<T> {
         self.constant_str(name).var_size_bytes(val)
     }
 
-    pub fn field<S: Committable>(self, name: &str, val: Commitment<S>) -> Self {
-        self.constant_str(name).fixed_size_bytes(&val.0)
+    pub fn field<C: AsRef<[u8]>>(self, name: &str, val: C) -> Self {
+        self.constant_str(name).var_size_bytes(val.as_ref())
     }
 
     pub fn u64_field(self, name: &str, val: u64) -> Self {
         self.constant_str(name).u64(val)
     }
 
-    pub fn array_field<S: Committable>(self, name: &str, val: &[Commitment<S>]) -> Self {
+    pub fn array_field<C: AsRef<[u8]>>(self, name: &str, val: &[C]) -> Self {
         let mut ret = self.constant_str(name).u64(val.len() as u64);
         for v in val.iter() {
-            ret = ret.fixed_size_bytes(&v.0);
+            ret = ret.var_size_bytes(v.as_ref());
         }
         ret
     }
 
-    pub fn finalize(self) -> Commitment<T> {
+    pub fn finalize(self) -> HashCommitment<T> {
         let ret = self.hasher.finalize();
-        Commitment(ret.try_into().unwrap(), Default::default())
+        HashCommitment(ret.try_into().unwrap(), Default::default())
     }
 }
