@@ -94,7 +94,7 @@ impl<T: ?Sized + Committable> core::hash::Hash for Commitment<T> {
 }
 
 impl<T: ?Sized + Committable> Commitment<T> {
-    pub fn into_bits(self) -> BitVec<bitvec::order::Lsb0, u8> {
+    pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
         BitVec::try_from(self.0.to_vec()).unwrap()
     }
 }
