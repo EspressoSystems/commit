@@ -76,7 +76,10 @@ pub trait Committable {
     Debug(bound = ""),
     Copy(bound = ""),
     PartialEq(bound = ""),
-    Eq(bound = "")
+    Eq(bound = ""),
+    PartialOrd(bound = ""),
+    Ord(bound = ""),
+    Hash(bound = "")
 )]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[cfg_attr(
@@ -88,6 +91,12 @@ pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<T>);
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
         BitVec::try_from(self.0.to_vec()).unwrap()
+    }
+}
+
+impl<T: ?Sized + Committable> AsRef<[u8]> for Commitment<T> {
+    fn as_ref(&self) -> &[u8] {
+        &self.0
     }
 }
 

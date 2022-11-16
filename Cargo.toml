@@ -1,6 +1,6 @@
 [package]
 name = "commit"
-version = "0.2.1"
+version = "0.2.2"
 edition = "2018"
 authors = ["Espresso Systems <hello@espressosys.com>"]
 license = "MIT"
