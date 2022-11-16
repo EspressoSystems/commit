@@ -130,9 +130,22 @@ impl<T: ?Sized + Committable> Tagged for Commitment<T> {
 
 #[cfg(feature = "ark-serialize")]
 impl<T: ?Sized + Committable> TryFrom<TaggedBase64> for Commitment<T> {
-    type Error = ark_serialize::SerializationError;
+    type Error = Tb64Error;
     fn try_from(v: TaggedBase64) -> Result<Self, Self::Error> {
-        <Self as CanonicalDeserialize>::deserialize(v.as_ref())
+        Self::try_from(&v)
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> TryFrom<&TaggedBase64> for Commitment<T> {
+    type Error = Tb64Error;
+    fn try_from(v: &TaggedBase64) -> Result<Self, Self::Error> {
+        if v.tag() == T::tag() {
+            <Self as CanonicalDeserialize>::deserialize(v.as_ref())
+                .map_err(|_| Tb64Error::InvalidData)
+        } else {
+            Err(Tb64Error::InvalidTag)
+        }
     }
 }
 
