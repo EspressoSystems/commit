@@ -5,24 +5,26 @@
 // along with the Commit library. If not, see <https://mit-license.org/>.
 
 use arbitrary::{Arbitrary, Unstructured};
-#[cfg(feature = "ark-serialize")]
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use bitvec::vec::BitVec;
-#[cfg(feature = "ark-serialize")]
-use core::fmt::{self, Display, Formatter};
 use core::marker::PhantomData;
-#[cfg(feature = "ark-serialize")]
-use core::str::FromStr;
 use derivative::Derivative;
 use derive_more::{AsRef, Into};
 use generic_array::{ArrayLength, GenericArray};
-#[cfg(feature = "serde")]
-use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
 use sha3::Keccak256;
 use std::convert::{TryFrom, TryInto};
+
+#[cfg(feature = "ark-serialize")]
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
+#[cfg(feature = "ark-serialize")]
+use core::fmt::{self, Display, Formatter};
+#[cfg(feature = "ark-serialize")]
+use core::str::FromStr;
 #[cfg(feature = "ark-serialize")]
 use tagged_base64::{Tagged, TaggedBase64, Tb64Error};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 type Array = [u8; 32];
 
