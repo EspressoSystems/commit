@@ -5,14 +5,26 @@
 // along with the Commit library. If not, see <https://mit-license.org/>.
 
 use arbitrary::{Arbitrary, Unstructured};
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
 use bitvec::vec::BitVec;
 use core::marker::PhantomData;
+use derivative::Derivative;
+use derive_more::{AsRef, Into};
 use generic_array::{ArrayLength, GenericArray};
-use serde::{Deserialize, Serialize};
 use sha3::digest::Digest;
 use sha3::Keccak256;
 use std::convert::{TryFrom, TryInto};
+
+#[cfg(feature = "ark-serialize")]
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
+#[cfg(feature = "ark-serialize")]
+use core::fmt::{self, Display, Formatter};
+#[cfg(feature = "ark-serialize")]
+use core::str::FromStr;
+#[cfg(feature = "ark-serialize")]
+use tagged_base64::{Tagged, TaggedBase64, Tb64Error};
+
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 type Array = [u8; 32];
 
@@ -47,51 +59,31 @@ mod tests {
 }
 
 pub trait Committable {
+    /// Create a binding commitment to `self`.
     fn commit(&self) -> Commitment<Self>;
+
+    /// Tag that should be used when serializing commitments to this type.
+    ///
+    /// If not provided, a generic "COMMIT" tag will be used.
+    fn tag() -> String {
+        "COMMIT".to_string()
+    }
 }
 
-#[derive(Serialize, Deserialize)]
-#[serde(bound = "")]
+#[derive(Derivative, AsRef, Into)]
+#[derivative(
+    Clone(bound = ""),
+    Debug(bound = ""),
+    Copy(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = "")
+)]
+#[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound = "", try_from = "TaggedBase64", into = "TaggedBase64")
+)]
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<T>);
-
-impl<T: ?Sized + Committable> AsRef<[u8]> for Commitment<T> {
-    fn as_ref(&self) -> &[u8] {
-        &self.0
-    }
-}
-
-// we need custom impls because `T` doesn't actually need to satisfy
-// these traits
-impl<T: ?Sized + Committable> core::fmt::Debug for Commitment<T> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        f.write_str("Commitment<")?;
-        f.write_str(std::any::type_name::<T>())?;
-        f.write_str(">(")?;
-        f.write_str(&hex::encode(&self.0))?;
-        f.write_str(")")
-    }
-}
-
-impl<T: ?Sized + Committable> Clone for Commitment<T> {
-    fn clone(&self) -> Self {
-        Self(self.0, self.1)
-    }
-}
-impl<T: ?Sized + Committable> Copy for Commitment<T> {}
-impl<T: ?Sized + Committable> PartialEq for Commitment<T> {
-    fn eq(&self, rhs: &Self) -> bool {
-        self.0 == rhs.0
-    }
-}
-impl<T: ?Sized + Committable> Eq for Commitment<T> {}
-impl<T: ?Sized + Committable> core::hash::Hash for Commitment<T> {
-    fn hash<H>(&self, h: &mut H)
-    where
-        H: std::hash::Hasher,
-    {
-        self.0.hash(h)
-    }
-}
 
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
@@ -99,6 +91,7 @@ impl<T: ?Sized + Committable> Commitment<T> {
     }
 }
 
+#[cfg(feature = "ark-serialize")]
 impl<T: ?Sized + Committable> CanonicalSerialize for Commitment<T> {
     fn serialize<W: Write>(&self, mut w: W) -> Result<(), SerializationError> {
         w.write_all(&self.0).map_err(SerializationError::from)
@@ -109,6 +102,7 @@ impl<T: ?Sized + Committable> CanonicalSerialize for Commitment<T> {
     }
 }
 
+#[cfg(feature = "ark-serialize")]
 impl<T: ?Sized + Committable> CanonicalDeserialize for Commitment<T> {
     fn deserialize<R: Read>(mut r: R) -> Result<Self, SerializationError> {
         let mut buf = [0u8; 32];
@@ -126,6 +120,65 @@ impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
 impl<'a, T: ?Sized + Committable> Arbitrary<'a> for Commitment<T> {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Self(u.arbitrary()?, PhantomData::default()))
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> Tagged for Commitment<T> {
+    fn tag() -> String {
+        T::tag()
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> TryFrom<TaggedBase64> for Commitment<T> {
+    type Error = Tb64Error;
+    fn try_from(v: TaggedBase64) -> Result<Self, Self::Error> {
+        Self::try_from(&v)
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> TryFrom<&TaggedBase64> for Commitment<T> {
+    type Error = Tb64Error;
+    fn try_from(v: &TaggedBase64) -> Result<Self, Self::Error> {
+        if v.tag() == T::tag() {
+            <Self as CanonicalDeserialize>::deserialize(v.as_ref())
+                .map_err(|_| Tb64Error::InvalidData)
+        } else {
+            Err(Tb64Error::InvalidTag)
+        }
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> From<Commitment<T>> for TaggedBase64 {
+    fn from(c: Commitment<T>) -> Self {
+        Self::from(&c)
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> From<&Commitment<T>> for TaggedBase64 {
+    fn from(c: &Commitment<T>) -> Self {
+        let mut bytes = std::vec![];
+        CanonicalSerialize::serialize(c, &mut bytes).unwrap();
+        Self::new(&T::tag(), &bytes).unwrap()
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> Display for Commitment<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", TaggedBase64::from(self))
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> FromStr for Commitment<T> {
+    type Err = Tb64Error;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::try_from(TaggedBase64::from_str(s)?).map_err(|_| Tb64Error::InvalidData)
     }
 }
 
