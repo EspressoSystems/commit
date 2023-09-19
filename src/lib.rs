@@ -86,7 +86,7 @@ pub trait Committable {
     feature = "serde",
     serde(bound = "", try_from = "TaggedBase64", into = "TaggedBase64")
 )]
-pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<T>);
+pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
