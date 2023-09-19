@@ -70,11 +70,11 @@ pub trait Committable {
     }
 }
 
-#[derive(Derivative, AsRef, Into)]
+#[derive(Derivative, AsRef, Into, Copy)]
 #[derivative(
     Clone(bound = ""),
     Debug(bound = ""),
-    Copy(bound = ""),
+    // Copy(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
     PartialOrd(bound = ""),
@@ -128,7 +128,7 @@ impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
 
 impl<'a, T: ?Sized + Committable> Arbitrary<'a> for Commitment<T> {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
-        Ok(Self(u.arbitrary()?, PhantomData::default()))
+        Ok(Self(u.arbitrary()?, PhantomData))
     }
 }
 
