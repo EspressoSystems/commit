@@ -74,7 +74,6 @@ pub trait Committable {
 #[derivative(
     Clone(bound = ""),
     Debug(bound = ""),
-    // Copy(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
     PartialOrd(bound = ""),
