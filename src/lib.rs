@@ -70,9 +70,9 @@ pub trait Committable {
     }
 }
 
-#[derive(Derivative, AsRef, Into, Copy)]
+#[derive(Derivative, AsRef, Into)]
 #[derivative(
-    Clone(bound = ""),
+    Copy(bound = ""),
     Debug(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
@@ -90,6 +90,13 @@ pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
         BitVec::try_from(self.0.to_vec()).unwrap()
+    }
+}
+
+// clippy pacification: `non_canonical_clone_impl` aka `incorrect_clone_impl_on_copy_type`
+impl<T: ?Sized + Committable> Clone for Commitment<T> {
+    fn clone(&self) -> Self {
+        *self
     }
 }
 
