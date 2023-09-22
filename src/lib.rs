@@ -35,7 +35,7 @@ type Array = [u8; 32];
 const INVALID_UTF8: [u8; 2] = [0xC0u8, 0x7Fu8];
 
 #[cfg(test)]
-mod tests {
+mod test_quickcheck {
     use super::INVALID_UTF8;
     use quickcheck_macros::quickcheck;
 
@@ -91,11 +91,21 @@ pub trait Committable {
 )]
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
-/// Consolidate trait bounds for cryptographic commitments
+/// Consolidate trait bounds for cryptographic commitments.
+///
 pub trait CommitmentBounds:
     AsRef<[u8]> + Clone + Copy + Debug + for<'a> Deserialize<'a> + Eq + PartialEq + Serialize + Hash
 {
-    fn default_commitment() -> Self;
+    /// Create a default commitment with no preimage.
+    ///
+    /// # Alternative to [`Default`]
+    ///
+    /// [`Commitment`] does not impl [`Default`] so as to prevent users from
+    /// accidentally creating a commitment that has no preimage. Sometimes,
+    /// however, such a commitment is needed so we provide this convenience
+    /// method. Even without this method, we cannot stop users from creating
+    /// such a commitment using [`Deserialize`] or `From<TaggedBase64>`.
+    fn default_commitment_no_preimage() -> Self;
 }
 
 impl<T> CommitmentBounds for T
@@ -111,17 +121,18 @@ where
         + Serialize
         + Hash,
 {
-    fn default_commitment() -> Self {
+    fn default_commitment_no_preimage() -> Self {
         Self::default()
     }
 }
 
+// `Commitment<T>` needs its own impl because it's not `Default`
 impl<T> CommitmentBounds for Commitment<T>
 where
     T: Committable,
 {
-    fn default_commitment() -> Self {
-        RawCommitmentBuilder::new("DEFAULT_TAG").finalize()
+    fn default_commitment_no_preimage() -> Self {
+        Commitment([0u8; 32], PhantomData)
     }
 }
 
@@ -303,5 +314,59 @@ impl<T: Committable> RawCommitmentBuilder<T> {
     pub fn finalize(self) -> Commitment<T> {
         let ret = self.hasher.finalize();
         Commitment(ret.try_into().unwrap(), Default::default())
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use std::{fmt::Debug, hash::Hash};
+
+    struct DummyCommittable;
+    impl Committable for DummyCommittable {
+        fn commit(&self) -> Commitment<Self> {
+            Commitment([0u8; 32], PhantomData)
+        }
+
+        fn tag() -> String {
+            "DUMMY_TAG".to_string()
+        }
+    }
+
+    // For most `T`, `Commitment<T>` has many more traits beyond those
+    // explicitly derived, such as `Send`, `Sync`, `'static`.
+    // This function lists those traits.
+    // A call to `trait_bounds_helper(c)` where `c` is a `Commitment<T>`
+    // will compile only if `Commitment<T>` impls all the expected traits.
+    fn trait_bounds_helper<T>(_t: T)
+    where
+        T: for<'a> Arbitrary<'a>
+            + AsRef<[u8]>
+            + Copy
+            + Clone
+            + Debug
+            + Display
+            + for<'a> Deserialize<'a>
+            + Eq
+            + FromStr
+            + Hash
+            + Ord
+            + PartialEq
+            + PartialOrd
+            + Send
+            + Serialize
+            + Sized
+            + Sync
+            + Tagged
+            + TryFrom<TaggedBase64>
+            + for<'a> TryFrom<&'a TaggedBase64>
+            + 'static,
+    {
+    }
+
+    #[test]
+    fn trait_bounds() {
+        // this code compiles only when `Commitment` impls all the traits in `trait_bounds_helper`
+        trait_bounds_helper(DummyCommittable.commit());
     }
 }
