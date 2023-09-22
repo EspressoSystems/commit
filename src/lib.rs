@@ -92,9 +92,8 @@ pub trait Committable {
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
 /// Consolidate trait bounds for cryptographic commitments.
-///
-pub trait CommitmentBounds:
-    AsRef<[u8]> + Clone + Copy + Debug + for<'a> Deserialize<'a> + Eq + PartialEq + Serialize + Hash
+pub trait CommitmentBoundsSerdeless:
+    AsRef<[u8]> + Clone + Copy + Debug + Eq + PartialEq + Hash
 {
     /// Create a default commitment with no preimage.
     ///
@@ -108,17 +107,15 @@ pub trait CommitmentBounds:
     fn default_commitment_no_preimage() -> Self;
 }
 
-impl<T> CommitmentBounds for T
+impl<T> CommitmentBoundsSerdeless for T
 where
     T: AsRef<[u8]>
         + Clone
         + Copy
         + Debug
-        + Default // additional bound beyond CommitmentBounds
-        + for<'a> Deserialize<'a>
+        + Default // additional bound beyond CommitmentBoundsSerdeless
         + Eq
         + PartialEq
-        + Serialize
         + Hash,
 {
     fn default_commitment_no_preimage() -> Self {
@@ -127,13 +124,25 @@ where
 }
 
 // `Commitment<T>` needs its own impl because it's not `Default`
-impl<T> CommitmentBounds for Commitment<T>
+impl<T> CommitmentBoundsSerdeless for Commitment<T>
 where
     T: Committable,
 {
     fn default_commitment_no_preimage() -> Self {
         Commitment([0u8; 32], PhantomData)
     }
+}
+
+#[cfg(feature = "serde")]
+pub trait CommitmentBounds:
+    CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
+{
+}
+
+#[cfg(feature = "serde")]
+impl<T> CommitmentBounds for T where
+    T: CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
+{
 }
 
 impl<T: ?Sized + Committable> Commitment<T> {
@@ -318,6 +327,7 @@ impl<T: Committable> RawCommitmentBuilder<T> {
 }
 
 #[cfg(test)]
+#[cfg(feature = "serde")]
 mod test {
     use super::*;
     use std::{fmt::Debug, hash::Hash};
