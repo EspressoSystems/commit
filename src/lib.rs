@@ -12,7 +12,11 @@ use derive_more::{AsRef, Into};
 use generic_array::{ArrayLength, GenericArray};
 use sha3::digest::Digest;
 use sha3::Keccak256;
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
+    hash::Hash,
+};
 
 #[cfg(feature = "ark-serialize")]
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
@@ -86,6 +90,40 @@ pub trait Committable {
     serde(bound = "", try_from = "TaggedBase64", into = "TaggedBase64")
 )]
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
+
+/// Consolidate trait bounds for cryptographic commitments
+pub trait CommitmentBounds:
+    AsRef<[u8]> + Clone + Copy + Debug + for<'a> Deserialize<'a> + Eq + PartialEq + Serialize + Hash
+{
+    fn default_commitment() -> Self;
+}
+
+impl<T> CommitmentBounds for T
+where
+    T: AsRef<[u8]>
+        + Clone
+        + Copy
+        + Debug
+        + Default // additional bound beyond CommitmentBounds
+        + for<'a> Deserialize<'a>
+        + Eq
+        + PartialEq
+        + Serialize
+        + Hash,
+{
+    fn default_commitment() -> Self {
+        Self::default()
+    }
+}
+
+impl<T> CommitmentBounds for Commitment<T>
+where
+    T: Committable,
+{
+    fn default_commitment() -> Self {
+        RawCommitmentBuilder::new("DEFAULT_TAG").finalize()
+    }
+}
 
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
