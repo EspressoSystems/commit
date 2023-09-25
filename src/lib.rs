@@ -107,26 +107,6 @@ pub trait CommitmentBoundsSerdeless:
     fn default_commitment_no_preimage() -> Self;
 }
 
-impl<T> CommitmentBoundsSerdeless for T
-where
-    T: AsRef<[u8]>
-        + Clone
-        + Copy
-        + Debug
-        + Default // additional bound beyond CommitmentBoundsSerdeless
-        + Eq
-        + Hash
-        + PartialEq
-        + Send
-        + Sync
-        + 'static,
-{
-    fn default_commitment_no_preimage() -> Self {
-        Self::default()
-    }
-}
-
-// `Commitment<T>` needs its own impl because it's not `Default`
 impl<T> CommitmentBoundsSerdeless for Commitment<T>
 where
     T: Committable + 'static,
@@ -139,12 +119,6 @@ where
 #[cfg(feature = "serde")]
 pub trait CommitmentBounds:
     CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
-{
-}
-
-#[cfg(feature = "serde")]
-impl<T> CommitmentBounds for T where
-    T: CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
 {
 }
 
