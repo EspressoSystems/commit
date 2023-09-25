@@ -93,7 +93,7 @@ pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
 /// Consolidate trait bounds for cryptographic commitments.
 pub trait CommitmentBoundsSerdeless:
-    AsRef<[u8]> + Clone + Copy + Debug + Eq + PartialEq + Hash
+    AsRef<[u8]> + Clone + Copy + Debug + Eq + Hash + PartialEq + Send + Sync + 'static
 {
     /// Create a default commitment with no preimage.
     ///
@@ -115,8 +115,11 @@ where
         + Debug
         + Default // additional bound beyond CommitmentBoundsSerdeless
         + Eq
+        + Hash
         + PartialEq
-        + Hash,
+        + Send
+        + Sync
+        + 'static,
 {
     fn default_commitment_no_preimage() -> Self {
         Self::default()
@@ -126,7 +129,7 @@ where
 // `Commitment<T>` needs its own impl because it's not `Default`
 impl<T> CommitmentBoundsSerdeless for Commitment<T>
 where
-    T: Committable,
+    T: Committable + 'static,
 {
     fn default_commitment_no_preimage() -> Self {
         Commitment([0u8; 32], PhantomData)
