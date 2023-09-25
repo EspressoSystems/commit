@@ -148,6 +148,9 @@ impl<T> CommitmentBounds for T where
 {
 }
 
+#[cfg(not(feature = "serde"))]
+trait CommitmentBounds: CommitmentBoundsSerdeless {}
+
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
         BitVec::try_from(self.0.to_vec()).unwrap()
