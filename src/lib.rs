@@ -12,7 +12,11 @@ use derive_more::{AsRef, Into};
 use generic_array::{ArrayLength, GenericArray};
 use sha3::digest::Digest;
 use sha3::Keccak256;
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    fmt::Debug,
+    hash::Hash,
+};
 
 #[cfg(feature = "ark-serialize")]
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
@@ -31,7 +35,7 @@ type Array = [u8; 32];
 const INVALID_UTF8: [u8; 2] = [0xC0u8, 0x7Fu8];
 
 #[cfg(test)]
-mod tests {
+mod test_quickcheck {
     use super::INVALID_UTF8;
     use quickcheck_macros::quickcheck;
 
@@ -86,6 +90,40 @@ pub trait Committable {
     serde(bound = "", try_from = "TaggedBase64", into = "TaggedBase64")
 )]
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
+
+/// Consolidate trait bounds for cryptographic commitments.
+pub trait CommitmentBoundsSerdeless:
+    AsRef<[u8]> + Clone + Copy + Debug + Eq + Hash + PartialEq + Send + Sync + 'static
+{
+    /// Create a default commitment with no preimage.
+    ///
+    /// # Alternative to [`Default`]
+    ///
+    /// [`Commitment`] does not impl [`Default`] so as to prevent users from
+    /// accidentally creating a commitment that has no preimage. Sometimes,
+    /// however, such a commitment is needed so we provide this convenience
+    /// method. Even without this method, we cannot stop users from creating
+    /// such a commitment using [`Deserialize`] or `From<TaggedBase64>`.
+    fn default_commitment_no_preimage() -> Self;
+}
+
+impl<T> CommitmentBoundsSerdeless for Commitment<T>
+where
+    T: Committable + 'static,
+{
+    fn default_commitment_no_preimage() -> Self {
+        Commitment([0u8; 32], PhantomData)
+    }
+}
+
+#[cfg(feature = "serde")]
+pub trait CommitmentBounds:
+    CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
+{
+}
+
+#[cfg(not(feature = "serde"))]
+trait CommitmentBounds: CommitmentBoundsSerdeless {}
 
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
@@ -265,5 +303,60 @@ impl<T: Committable> RawCommitmentBuilder<T> {
     pub fn finalize(self) -> Commitment<T> {
         let ret = self.hasher.finalize();
         Commitment(ret.try_into().unwrap(), Default::default())
+    }
+}
+
+#[cfg(test)]
+#[cfg(feature = "serde")]
+mod test {
+    use super::*;
+    use std::{fmt::Debug, hash::Hash};
+
+    struct DummyCommittable;
+    impl Committable for DummyCommittable {
+        fn commit(&self) -> Commitment<Self> {
+            Commitment([0u8; 32], PhantomData)
+        }
+
+        fn tag() -> String {
+            "DUMMY_TAG".to_string()
+        }
+    }
+
+    // For most `T`, `Commitment<T>` has many more traits beyond those
+    // explicitly derived, such as `Send`, `Sync`, `'static`.
+    // This function lists those traits.
+    // A call to `trait_bounds_helper(c)` where `c` is a `Commitment<T>`
+    // will compile only if `Commitment<T>` impls all the expected traits.
+    fn trait_bounds_helper<T>(_t: T)
+    where
+        T: for<'a> Arbitrary<'a>
+            + AsRef<[u8]>
+            + Copy
+            + Clone
+            + Debug
+            + Display
+            + for<'a> Deserialize<'a>
+            + Eq
+            + FromStr
+            + Hash
+            + Ord
+            + PartialEq
+            + PartialOrd
+            + Send
+            + Serialize
+            + Sized
+            + Sync
+            + Tagged
+            + TryFrom<TaggedBase64>
+            + for<'a> TryFrom<&'a TaggedBase64>
+            + 'static,
+    {
+    }
+
+    #[test]
+    fn trait_bounds() {
+        // this code compiles only when `Commitment` impls all the traits in `trait_bounds_helper`
+        trait_bounds_helper(DummyCommittable.commit());
     }
 }
