@@ -95,26 +95,9 @@ pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 pub trait CommitmentBoundsSerdeless:
     AsRef<[u8]> + Clone + Copy + Debug + Eq + From<[u8; 32]> + Hash + PartialEq + Send + Sync + 'static
 {
-    /// Create a default commitment with no preimage.
-    ///
-    /// # Alternative to [`Default`]
-    ///
-    /// [`Commitment`] does not impl [`Default`] so as to prevent users from
-    /// accidentally creating a commitment that has no preimage. Sometimes,
-    /// however, such a commitment is needed so we provide this convenience
-    /// method. Even without this method, we cannot stop users from creating
-    /// such a commitment using [`Deserialize`] or `From<TaggedBase64>`.
-    fn default_commitment_no_preimage() -> Self;
 }
 
-impl<T> CommitmentBoundsSerdeless for Commitment<T>
-where
-    T: Committable + 'static,
-{
-    fn default_commitment_no_preimage() -> Self {
-        Commitment([0u8; 32], PhantomData)
-    }
-}
+impl<T> CommitmentBoundsSerdeless for Commitment<T> where T: Committable + 'static {}
 
 #[cfg(feature = "serde")]
 pub trait CommitmentBounds:
