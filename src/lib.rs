@@ -92,7 +92,11 @@ pub trait Committable {
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
 /// Consolidate trait bounds for cryptographic commitments.
-pub trait CommitmentBoundsSerdeless:
+///
+/// Downstream users should prefer [`CommitmentBounds`], which is defined appropriately according to feature flags "ark-serialize", "serde".
+///
+/// "serde" is additive with "ark-serialize", so if "serde" is enabled then so is "ark-serialize". But it is possible to have "ark-serialize" without "serde".
+pub trait CommitmentBoundsArkless:
     AsRef<[u8]> + Clone + Copy + Debug + Eq + Hash + PartialEq + Send + Sync + 'static
 {
     /// Create a default commitment with no preimage.
@@ -107,7 +111,7 @@ pub trait CommitmentBoundsSerdeless:
     fn default_commitment_no_preimage() -> Self;
 }
 
-impl<T> CommitmentBoundsSerdeless for Commitment<T>
+impl<T> CommitmentBoundsArkless for Commitment<T>
 where
     T: Committable + 'static,
 {
@@ -116,14 +120,36 @@ where
     }
 }
 
+/// If "ark-serialize" feature enabled
+/// then add `CanonicalSerialize`, `CanonicalDeserialize`
+/// else add nothing
+#[cfg(feature = "ark-serialize")]
+pub trait CommitmentBoundsSerdeless:
+    CommitmentBoundsArkless + CanonicalDeserialize + CanonicalSerialize
+{
+}
+
+#[cfg(not(feature = "ark-serialize"))]
+pub trait CommitmentBoundsSerdeless: CommitmentBoundsArkless {}
+
+impl<T> CommitmentBoundsSerdeless for Commitment<T> where T: Committable + 'static {}
+
+/// If "serde" feature enabled
+/// then add `Serialize`, `Deserialize`
+/// else if "ark-serialize" enabled but not "serde"
+/// then add nothing to [`CommitmentBoundsSerdeless`]
+/// else add nothing to [`CommitmentBoundsArkless`]
 #[cfg(feature = "serde")]
 pub trait CommitmentBounds:
     CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
 {
 }
 
-#[cfg(not(feature = "serde"))]
+#[cfg(all(feature = "ark-serialize", not(feature = "serde")))]
 trait CommitmentBounds: CommitmentBoundsSerdeless {}
+
+#[cfg(all(not(feature = "ark-serialize"), not(feature = "serde")))]
+trait CommitmentBounds: CommitmentBoundsArkless {}
 
 impl<T> CommitmentBounds for Commitment<T> where T: Committable + 'static {}
 
@@ -334,6 +360,8 @@ mod test {
     where
         T: for<'a> Arbitrary<'a>
             + AsRef<[u8]>
+            + CanonicalDeserialize
+            + CanonicalSerialize
             + Copy
             + Clone
             + Debug
