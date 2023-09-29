@@ -93,7 +93,7 @@ pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
 /// Consolidate trait bounds for cryptographic commitments.
 pub trait CommitmentBoundsSerdeless:
-    AsRef<[u8]> + Clone + Copy + Debug + Eq + Hash + PartialEq + Send + Sync + 'static
+    AsRef<[u8]> + Clone + Copy + Debug + Eq + From<[u8; 32]> + Hash + PartialEq + Send + Sync + 'static
 {
     /// Create a default commitment with no preimage.
     ///
@@ -169,6 +169,12 @@ impl<T: ?Sized + Committable> CanonicalDeserialize for Commitment<T> {
 impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
     fn from(v: Commitment<T>) -> Self {
         v.0
+    }
+}
+
+impl<T: ?Sized + Committable> From<[u8; 32]> for Commitment<T> {
+    fn from(value: [u8; 32]) -> Self {
+        Commitment(value, PhantomData)
     }
 }
 
