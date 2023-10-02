@@ -92,7 +92,11 @@ pub trait Committable {
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
 /// Consolidate trait bounds for cryptographic commitments.
-pub trait CommitmentBoundsSerdeless:
+///
+/// Downstream users should prefer [`CommitmentBounds`], which is defined appropriately according to feature flags "ark-serialize", "serde".
+///
+/// "serde" is additive with "ark-serialize", so if "serde" is enabled then so is "ark-serialize". But it is possible to have "ark-serialize" without "serde".
+pub trait CommitmentBoundsArkless:
     AsRef<[u8]> + Clone + Copy + Debug + Eq + Hash + PartialEq + Send + Sync + 'static
 {
     /// Create a default commitment with no preimage.
@@ -103,11 +107,11 @@ pub trait CommitmentBoundsSerdeless:
     /// accidentally creating a commitment that has no preimage. Sometimes,
     /// however, such a commitment is needed so we provide this convenience
     /// method. Even without this method, we cannot stop users from creating
-    /// such a commitment using [`Deserialize`] or `From<TaggedBase64>`.
+    /// such a commitment using [`CanonicalDeserialize`].
     fn default_commitment_no_preimage() -> Self;
 }
 
-impl<T> CommitmentBoundsSerdeless for Commitment<T>
+impl<T> CommitmentBoundsArkless for Commitment<T>
 where
     T: Committable + 'static,
 {
@@ -115,6 +119,20 @@ where
         Commitment([0u8; 32], PhantomData)
     }
 }
+
+/// If "ark-serialize" feature enabled
+/// then add `CanonicalSerialize`, `CanonicalDeserialize`
+/// else add nothing
+#[cfg(feature = "ark-serialize")]
+pub trait CommitmentBoundsSerdeless:
+    CommitmentBoundsArkless + CanonicalDeserialize + CanonicalSerialize
+{
+}
+
+#[cfg(not(feature = "ark-serialize"))]
+pub trait CommitmentBoundsSerdeless: CommitmentBoundsArkless {}
+
+impl<T> CommitmentBoundsSerdeless for Commitment<T> where T: Committable + 'static {}
 
 #[cfg(feature = "serde")]
 pub trait CommitmentBounds:
@@ -334,6 +352,8 @@ mod test {
     where
         T: for<'a> Arbitrary<'a>
             + AsRef<[u8]>
+            + CanonicalDeserialize
+            + CanonicalSerialize
             + Copy
             + Clone
             + Debug
