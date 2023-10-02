@@ -9,8 +9,10 @@ use bitvec::vec::BitVec;
 use core::marker::PhantomData;
 use derivative::Derivative;
 use derive_more::{AsRef, Into};
-use generic_array::{ArrayLength, GenericArray};
-use sha3::digest::Digest;
+use sha3::digest::{
+    crypto_common::generic_array::{ArrayLength, GenericArray},
+    Digest,
+};
 use sha3::Keccak256;
 use std::{
     convert::{TryFrom, TryInto},
