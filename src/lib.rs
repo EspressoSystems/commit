@@ -9,8 +9,10 @@ use bitvec::vec::BitVec;
 use core::marker::PhantomData;
 use derivative::Derivative;
 use derive_more::{AsRef, Into};
-use generic_array::{ArrayLength, GenericArray};
-use sha3::digest::Digest;
+use sha3::digest::{
+    crypto_common::generic_array::{ArrayLength, GenericArray},
+    Digest,
+};
 use sha3::Keccak256;
 use std::{
     convert::{TryFrom, TryInto},
@@ -280,7 +282,7 @@ impl<T: Committable> RawCommitmentBuilder<T> {
     }
 
     #[allow(dead_code)]
-    pub fn generic_byte_array<N: ArrayLength>(mut self, f: &GenericArray<u8, N>) -> Self {
+    pub fn generic_byte_array<N: ArrayLength<u8>>(mut self, f: &GenericArray<u8, N>) -> Self {
         self.hasher.update(f);
         self
     }

@@ -7,17 +7,20 @@ license = "MIT"
 
 [features]
 default = ["ark-serialize", "serde"]
-ark-serialize = ["dep:ark-serialize", "tagged-base64", "tagged-base64/ark-serialize"]
+ark-serialize = [
+    "dep:ark-serialize",
+    "tagged-base64",
+    "tagged-base64/ark-serialize",
+]
 serde = ["dep:serde", "tagged-base64", "tagged-base64/serde", "ark-serialize"]
 
 [dependencies]
-arbitrary = { version="1.0", features=["derive"] }
+arbitrary = { version = "1.0", features = ["derive"] }
 ark-serialize = { version = "0.3.0", optional = true, features = ["derive"] }
 bitvec = "1.0"
 derivative = "2.2"
 derive_more = "0.99"
 funty = "2.0"
-generic-array = { version = "1.0.0", features = ["serde"] }
 hex = "0.4.3"
 serde = { version = "1.0", optional = true, features = ["derive"] }
 sha3 = "^0.10"
