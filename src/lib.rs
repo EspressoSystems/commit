@@ -107,7 +107,7 @@ pub trait CommitmentBoundsArkless:
     /// accidentally creating a commitment that has no preimage. Sometimes,
     /// however, such a commitment is needed so we provide this convenience
     /// method. Even without this method, we cannot stop users from creating
-    /// such a commitment using [`Deserialize`] or `From<TaggedBase64>`.
+    /// such a commitment using [`CanonicalDeserialize`].
     fn default_commitment_no_preimage() -> Self;
 }
 
@@ -134,22 +134,14 @@ pub trait CommitmentBoundsSerdeless: CommitmentBoundsArkless {}
 
 impl<T> CommitmentBoundsSerdeless for Commitment<T> where T: Committable + 'static {}
 
-/// If "serde" feature enabled
-/// then add `Serialize`, `Deserialize`
-/// else if "ark-serialize" enabled but not "serde"
-/// then add nothing to [`CommitmentBoundsSerdeless`]
-/// else add nothing to [`CommitmentBoundsArkless`]
 #[cfg(feature = "serde")]
 pub trait CommitmentBounds:
     CommitmentBoundsSerdeless + for<'a> Deserialize<'a> + Serialize
 {
 }
 
-#[cfg(all(feature = "ark-serialize", not(feature = "serde")))]
+#[cfg(not(feature = "serde"))]
 trait CommitmentBounds: CommitmentBoundsSerdeless {}
-
-#[cfg(all(not(feature = "ark-serialize"), not(feature = "serde")))]
-trait CommitmentBounds: CommitmentBoundsArkless {}
 
 impl<T> CommitmentBounds for Commitment<T> where T: Committable + 'static {}
 
