@@ -280,7 +280,7 @@ impl<T: Committable> RawCommitmentBuilder<T> {
     }
 
     #[allow(dead_code)]
-    pub fn generic_byte_array<N: ArrayLength<u8>>(mut self, f: &GenericArray<u8, N>) -> Self {
+    pub fn generic_byte_array<N: ArrayLength>(mut self, f: &GenericArray<u8, N>) -> Self {
         self.hasher.update(f);
         self
     }
