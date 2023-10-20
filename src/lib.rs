@@ -4,6 +4,11 @@
 // You should have received a copy of the MIT License
 // along with the Commit library. If not, see <https://mit-license.org/>.
 
+// `Clippy` is not happy with the `derivative` crate in rust 1.73.
+// Remove this statement when `Clippy` or `derivative` fixes it.
+// See: https://github.com/mcarton/rust-derivative/issues/115
+#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
+
 use arbitrary::{Arbitrary, Unstructured};
 use bitvec::vec::BitVec;
 use core::marker::PhantomData;
@@ -287,6 +292,16 @@ impl<T: Committable> RawCommitmentBuilder<T> {
         self
     }
 
+    pub fn optional<N: Committable>(self, field: &str, o: &Option<N>) -> Self {
+        match o {
+            Some(s) => {
+                let commit = s.commit();
+                self.fixed_size_field(field, &commit.0)
+            }
+            None => self.u64_field(field, 0),
+        }
+    }
+
     pub fn u64(self, val: u64) -> Self {
         self.fixed_size_bytes(&val.to_le_bytes())
     }
@@ -382,5 +397,28 @@ mod test {
     fn trait_bounds() {
         // this code compiles only when `Commitment` impls all the traits in `trait_bounds_helper`
         trait_bounds_helper(DummyCommittable.commit());
+    }
+
+    #[test]
+    fn test_optional() {
+        struct DummyStruct {
+            f1: Option<DummyCommittable>,
+        }
+
+        impl Committable for DummyStruct {
+            fn commit(&self) -> Commitment<Self> {
+                RawCommitmentBuilder::new("dummy_struct")
+                    .optional("f1", &self.f1)
+                    .finalize()
+            }
+        }
+
+        let dummy1 = DummyStruct { f1: None };
+        dummy1.commit();
+
+        let dummy2 = DummyStruct {
+            f1: Some(DummyCommittable),
+        };
+        dummy2.commit();
     }
 }
