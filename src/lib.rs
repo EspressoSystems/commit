@@ -26,7 +26,7 @@ use std::{
 };
 
 #[cfg(feature = "ark-serialize")]
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize, Read, SerializationError, Write};
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 #[cfg(feature = "ark-serialize")]
 use core::fmt::{self, Display, Formatter};
 #[cfg(feature = "ark-serialize")]
@@ -40,34 +40,6 @@ use serde::{Deserialize, Serialize};
 type Array = [u8; 32];
 
 const INVALID_UTF8: [u8; 2] = [0xC0u8, 0x7Fu8];
-
-#[cfg(test)]
-mod test_quickcheck {
-    use super::INVALID_UTF8;
-    use quickcheck_macros::quickcheck;
-
-    #[quickcheck]
-    fn invalid_utf8_is_invalid(pref: Vec<u8>, suff: Vec<u8>) {
-        let s = pref
-            .into_iter()
-            .chain(INVALID_UTF8.iter().cloned())
-            .chain(suff.into_iter())
-            .collect::<Vec<_>>();
-        assert!(std::str::from_utf8(&s).is_err());
-    }
-
-    #[quickcheck]
-    fn invalid_utf8_is_invalid_strs_only(pref: String, suff: String) {
-        let s = pref
-            .as_bytes()
-            .iter()
-            .chain(INVALID_UTF8.iter())
-            .chain(suff.as_bytes().iter())
-            .cloned()
-            .collect::<Vec<_>>();
-        assert!(std::str::from_utf8(&s).is_err());
-    }
-}
 
 pub trait Committable {
     /// Create a binding commitment to `self`.
@@ -95,6 +67,10 @@ pub trait Committable {
 #[cfg_attr(
     feature = "serde",
     serde(bound = "", try_from = "TaggedBase64", into = "TaggedBase64")
+)]
+#[cfg_attr(
+    feature = "ark-serialize",
+    derive(CanonicalSerialize, CanonicalDeserialize)
 )]
 pub struct Commitment<T: ?Sized + Committable>(Array, PhantomData<fn(&T)>);
 
@@ -171,26 +147,6 @@ impl<T: ?Sized + Committable> AsRef<[u8]> for Commitment<T> {
     }
 }
 
-#[cfg(feature = "ark-serialize")]
-impl<T: ?Sized + Committable> CanonicalSerialize for Commitment<T> {
-    fn serialize<W: Write>(&self, mut w: W) -> Result<(), SerializationError> {
-        w.write_all(&self.0).map_err(SerializationError::from)
-    }
-
-    fn serialized_size(&self) -> usize {
-        self.0.len()
-    }
-}
-
-#[cfg(feature = "ark-serialize")]
-impl<T: ?Sized + Committable> CanonicalDeserialize for Commitment<T> {
-    fn deserialize<R: Read>(mut r: R) -> Result<Self, SerializationError> {
-        let mut buf = [0u8; 32];
-        r.read_exact(&mut buf)?;
-        Ok(Commitment(buf, Default::default()))
-    }
-}
-
 impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
     fn from(v: Commitment<T>) -> Self {
         v.0
@@ -223,7 +179,7 @@ impl<T: ?Sized + Committable> TryFrom<&TaggedBase64> for Commitment<T> {
     type Error = Tb64Error;
     fn try_from(v: &TaggedBase64) -> Result<Self, Self::Error> {
         if v.tag() == T::tag() {
-            <Self as CanonicalDeserialize>::deserialize(v.as_ref())
+            <Self as CanonicalDeserialize>::deserialize_uncompressed_unchecked(v.as_ref())
                 .map_err(|_| Tb64Error::InvalidData)
         } else {
             Err(Tb64Error::InvalidTag)
@@ -242,7 +198,7 @@ impl<T: ?Sized + Committable> From<Commitment<T>> for TaggedBase64 {
 impl<T: ?Sized + Committable> From<&Commitment<T>> for TaggedBase64 {
     fn from(c: &Commitment<T>) -> Self {
         let mut bytes = std::vec![];
-        CanonicalSerialize::serialize(c, &mut bytes).unwrap();
+        CanonicalSerialize::serialize_uncompressed(c, &mut bytes).unwrap();
         Self::new(&T::tag(), &bytes).unwrap()
     }
 }
@@ -343,8 +299,7 @@ impl<T: Committable> RawCommitmentBuilder<T> {
     }
 }
 
-#[cfg(test)]
-#[cfg(feature = "serde")]
+#[cfg(all(test, feature = "ark-serialize", feature = "serde"))]
 mod test {
     use super::*;
     use std::{fmt::Debug, hash::Hash};
@@ -420,5 +375,54 @@ mod test {
             f1: Some(DummyCommittable),
         };
         dummy2.commit();
+    }
+
+    #[test]
+    fn test_ark_serialize() {
+        let comm = DummyCommittable.commit();
+        let mut bytes = vec![];
+        comm.serialize_uncompressed(&mut bytes).unwrap();
+        assert_eq!(bytes.len(), 32);
+        assert_eq!(
+            comm,
+            Commitment::deserialize_uncompressed_unchecked(bytes.as_slice()).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_tagged_base64() {
+        let comm = DummyCommittable.commit();
+        let tb64 = TaggedBase64::from(&comm);
+        assert_eq!(tb64.value().len(), 32);
+        assert_eq!(tb64.tag(), "DUMMY_TAG");
+        assert_eq!(comm, tb64.try_into().unwrap());
+    }
+}
+
+#[cfg(test)]
+mod test_quickcheck {
+    use super::INVALID_UTF8;
+    use quickcheck_macros::quickcheck;
+
+    #[quickcheck]
+    fn invalid_utf8_is_invalid(pref: Vec<u8>, suff: Vec<u8>) {
+        let s = pref
+            .into_iter()
+            .chain(INVALID_UTF8.iter().cloned())
+            .chain(suff.into_iter())
+            .collect::<Vec<_>>();
+        assert!(std::str::from_utf8(&s).is_err());
+    }
+
+    #[quickcheck]
+    fn invalid_utf8_is_invalid_strs_only(pref: String, suff: String) {
+        let s = pref
+            .as_bytes()
+            .iter()
+            .chain(INVALID_UTF8.iter())
+            .chain(suff.as_bytes().iter())
+            .cloned()
+            .collect::<Vec<_>>();
+        assert!(std::str::from_utf8(&s).is_err());
     }
 }
