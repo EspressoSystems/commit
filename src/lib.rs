@@ -19,11 +19,7 @@ use sha3::digest::{
     Digest,
 };
 use sha3::Keccak256;
-use std::{
-    convert::{TryFrom},
-    fmt::Debug,
-    hash::Hash,
-};
+use std::{convert::TryFrom, fmt::Debug, hash::Hash};
 
 #[cfg(feature = "ark-serialize")]
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
