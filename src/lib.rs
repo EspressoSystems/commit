@@ -7,7 +7,7 @@
 // `Clippy` is not happy with the `derivative` crate in rust 1.73.
 // Remove this statement when `Clippy` or `derivative` fixes it.
 // See: https://github.com/mcarton/rust-derivative/issues/115
-#![allow(clippy::non_canonical_partial_ord_impl)]
+#![allow(clippy::non_canonical_partial_ord_impl, unused_imports)]
 
 use arbitrary::{Arbitrary, Unstructured};
 use bitvec::vec::BitVec;
