@@ -262,6 +262,10 @@ impl<T: Committable> RawCommitmentBuilder<T> {
         self.fixed_size_bytes(&val.to_le_bytes())
     }
 
+    pub fn u32(self, val: u32) -> Self {
+        self.fixed_size_bytes(&val.to_le_bytes())
+    }
+
     pub fn var_size_bytes(self, f: &[u8]) -> Self {
         let mut ret = self.u64(f.len() as u64);
         ret.hasher.update(f);
