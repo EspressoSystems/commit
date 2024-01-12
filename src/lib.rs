@@ -20,7 +20,7 @@ use sha3::digest::{
 };
 use sha3::Keccak256;
 use std::{
-    convert::{TryFrom, TryInto},
+    convert::{TryFrom},
     fmt::Debug,
     hash::Hash,
 };
@@ -299,7 +299,7 @@ impl<T: Committable> RawCommitmentBuilder<T> {
 
     pub fn finalize(self) -> Commitment<T> {
         let ret = self.hasher.finalize();
-        Commitment(ret.try_into().unwrap(), Default::default())
+        Commitment(ret.into(), Default::default())
     }
 }
 
