@@ -7,7 +7,7 @@
 // `Clippy` is not happy with the `derivative` crate in rust 1.73.
 // Remove this statement when `Clippy` or `derivative` fixes it.
 // See: https://github.com/mcarton/rust-derivative/issues/115
-#![allow(clippy::incorrect_partial_ord_impl_on_ord_type)]
+#![allow(clippy::non_canonical_partial_ord_impl, unused_imports)]
 
 use arbitrary::{Arbitrary, Unstructured};
 use bitvec::vec::BitVec;
@@ -262,6 +262,14 @@ impl<T: Committable> RawCommitmentBuilder<T> {
         self.fixed_size_bytes(&val.to_le_bytes())
     }
 
+    pub fn u32(self, val: u32) -> Self {
+        self.fixed_size_bytes(&val.to_le_bytes())
+    }
+
+    pub fn u16(self, val: u16) -> Self {
+        self.fixed_size_bytes(&val.to_le_bytes())
+    }
+
     pub fn var_size_bytes(self, f: &[u8]) -> Self {
         let mut ret = self.u64(f.len() as u64);
         ret.hasher.update(f);
@@ -295,7 +303,7 @@ impl<T: Committable> RawCommitmentBuilder<T> {
 
     pub fn finalize(self) -> Commitment<T> {
         let ret = self.hasher.finalize();
-        Commitment(ret.try_into().unwrap(), Default::default())
+        Commitment(ret.into(), Default::default())
     }
 }
 
