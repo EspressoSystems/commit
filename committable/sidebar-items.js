@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Commitment","RawCommitmentBuilder"],"trait":["CommitmentBounds","CommitmentBoundsArkless","CommitmentBoundsSerdeless","Committable"]};
