@@ -1,8 +1,11 @@
 [package]
 name = "committable"
 version = "0.2.3"
-edition = "2018"
+edition = "2021"
+rust-version = "1.65.0"
 authors = ["Espresso Systems <hello@espressosys.com>"]
+repository = "https://github.com/EspressoSystems/commit.git"
+description = "Keccak256-based structured commitments"
 license = "MIT"
 
 [features]
