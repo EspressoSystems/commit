@@ -124,7 +124,7 @@ pub trait CommitmentBounds:
 }
 
 #[cfg(not(feature = "serde"))]
-trait CommitmentBounds: CommitmentBoundsSerdeless {}
+pub trait CommitmentBounds: CommitmentBoundsSerdeless {}
 
 impl<T> CommitmentBounds for Commitment<T> where T: Committable + 'static {}
 
