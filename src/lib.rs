@@ -153,6 +153,12 @@ impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
     }
 }
 
+impl<T: ?Sized + Committable> From<[u8; 32]> for Commitment<T> {
+    fn from(array: [u8; 32]) -> Self {
+        Self(array, PhantomData)
+    }
+}
+
 impl<'a, T: ?Sized + Committable> Arbitrary<'a> for Commitment<T> {
     fn arbitrary(u: &mut Unstructured<'a>) -> arbitrary::Result<Self> {
         Ok(Self(u.arbitrary()?, PhantomData))
