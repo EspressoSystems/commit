@@ -132,6 +132,10 @@ impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
         BitVec::try_from(self.0.to_vec()).unwrap()
     }
+
+    pub fn from_raw(bytes: [u8; 32]) -> Self {
+        Self(bytes, PhantomData)
+    }
 }
 
 // clippy pacification: `non_canonical_clone_impl` aka `incorrect_clone_impl_on_copy_type`
@@ -151,10 +155,6 @@ impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
     fn from(v: Commitment<T>) -> Self {
         v.0
     }
-}
-
-pub fn from_raw<T: ?Sized + Committable>(bytes: [u8; 32]) -> Commitment<T> {
-    Commitment(bytes, PhantomData)
 }
 
 impl<'a, T: ?Sized + Committable> Arbitrary<'a> for Commitment<T> {
