@@ -153,10 +153,8 @@ impl<T: ?Sized + Committable> From<Commitment<T>> for [u8; 32] {
     }
 }
 
-impl<T: ?Sized + Committable> From<[u8; 32]> for Commitment<T> {
-    fn from(array: [u8; 32]) -> Self {
-        Self(array, PhantomData)
-    }
+pub fn from_raw<T: ?Sized + Committable>(bytes: [u8; 32]) -> Commitment<T> {
+    Commitment(bytes, PhantomData)
 }
 
 impl<'a, T: ?Sized + Committable> Arbitrary<'a> for Commitment<T> {
