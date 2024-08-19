@@ -1,6 +1,6 @@
 [package]
 name = "committable"
-version = "0.2.3"
+version = "0.2.4"
 edition = "2021"
 rust-version = "1.65.0"
 authors = ["Espresso Systems <hello@espressosys.com>"]

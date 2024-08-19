@@ -124,13 +124,17 @@ pub trait CommitmentBounds:
 }
 
 #[cfg(not(feature = "serde"))]
-trait CommitmentBounds: CommitmentBoundsSerdeless {}
+pub trait CommitmentBounds: CommitmentBoundsSerdeless {}
 
 impl<T> CommitmentBounds for Commitment<T> where T: Committable + 'static {}
 
 impl<T: ?Sized + Committable> Commitment<T> {
     pub fn into_bits(self) -> BitVec<u8, bitvec::order::Lsb0> {
         BitVec::try_from(self.0.to_vec()).unwrap()
+    }
+
+    pub fn from_raw(bytes: [u8; 32]) -> Self {
+        Self(bytes, PhantomData)
     }
 }
 
