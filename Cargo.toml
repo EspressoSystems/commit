@@ -1,6 +1,6 @@
 [package]
 name = "committable"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2021"
 rust-version = "1.65.0"
 authors = ["Espresso Systems <hello@espressosys.com>"]
@@ -19,7 +19,7 @@ serde = ["dep:serde", "tagged-base64", "tagged-base64/serde", "ark-serialize"]
 
 [dependencies]
 arbitrary = { version = "1.0", features = ["derive"] }
-ark-serialize = { version = "0.4", optional = true, features = ["derive"] }
+ark-serialize = { version = "0.5", optional = true, features = ["derive"] }
 bitvec = "1.0"
 derivative = "2.2"
 derive_more = "0.99"
@@ -27,7 +27,7 @@ funty = "2.0"
 hex = "0.4.3"
 serde = { version = "1.0", optional = true, features = ["derive"] }
 sha3 = "^0.10"
-tagged-base64 = { version = "0.4.0", optional = true, default-features = false }
+tagged-base64 = { version = "0.4.1", optional = true, default-features = false }
 
 [dev-dependencies]
 quickcheck = "1.0"
