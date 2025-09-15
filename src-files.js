@@ -1,4 +1,2 @@
-var srcIndex = new Map(JSON.parse('[\
-["committable",["",[],["lib.rs"]]]\
-]'));
-createSrcSidebar();
+createSrcSidebar('[["committable",["",[],["lib.rs"]]]]');
+//{"start":19,"fragment_lengths":[34]}
