@@ -9,33 +9,34 @@
 // See: https://github.com/mcarton/rust-derivative/issues/115
 #![allow(clippy::non_canonical_partial_ord_impl, unused_imports)]
 
-use arbitrary::{Arbitrary, Unstructured};
-use bitvec::vec::BitVec;
+#[cfg(feature = "ark-serialize")]
+use core::fmt::{self, Display, Formatter};
 use core::marker::PhantomData;
-use derivative::Derivative;
-use derive_more::{AsRef, Into};
-use sha3::digest::{
-    crypto_common::generic_array::{ArrayLength, GenericArray},
-    Digest,
-};
-use sha3::Keccak256;
+#[cfg(feature = "ark-serialize")]
+use core::str::FromStr;
 use std::{
     convert::{TryFrom, TryInto},
     fmt::Debug,
     hash::Hash,
 };
 
+use arbitrary::{Arbitrary, Unstructured};
 #[cfg(feature = "ark-serialize")]
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-#[cfg(feature = "ark-serialize")]
-use core::fmt::{self, Display, Formatter};
-#[cfg(feature = "ark-serialize")]
-use core::str::FromStr;
-#[cfg(feature = "ark-serialize")]
-use tagged_base64::{Tagged, TaggedBase64, Tb64Error};
-
+use bitvec::vec::BitVec;
+use derivative::Derivative;
+use derive_more::{AsRef, Into};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
+use sha3::{
+    digest::{
+        crypto_common::generic_array::{ArrayLength, GenericArray},
+        Digest,
+    },
+    Keccak256,
+};
+#[cfg(feature = "ark-serialize")]
+use tagged_base64::{Tagged, TaggedBase64, Tb64Error};
 
 type Array = [u8; 32];
 
@@ -62,6 +63,7 @@ pub trait Committable {
     Ord(bound = ""),
     Hash(bound = "")
 )]
+#[cfg_attr(not(feature = "ark-serialize"), derivative(Debug(bound = "")))]
 #[cfg_attr(feature = "serde", derive(Deserialize, Serialize))]
 #[cfg_attr(
     feature = "serde",
@@ -319,8 +321,9 @@ impl<T: Committable> RawCommitmentBuilder<T> {
 
 #[cfg(all(test, feature = "ark-serialize", feature = "serde"))]
 mod test {
-    use super::*;
     use std::{fmt::Debug, hash::Hash};
+
+    use super::*;
 
     struct DummyCommittable;
     impl Committable for DummyCommittable {
@@ -419,8 +422,9 @@ mod test {
 
 #[cfg(test)]
 mod test_quickcheck {
-    use super::INVALID_UTF8;
     use quickcheck_macros::quickcheck;
+
+    use super::INVALID_UTF8;
 
     #[quickcheck]
     fn invalid_utf8_is_invalid(pref: Vec<u8>, suff: Vec<u8>) {
