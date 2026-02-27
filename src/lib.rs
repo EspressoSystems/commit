@@ -56,7 +56,6 @@ pub trait Committable {
 #[derive(Derivative, AsRef, Into)]
 #[derivative(
     Copy(bound = ""),
-    Debug(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
     PartialOrd(bound = ""),
@@ -204,6 +203,13 @@ impl<T: ?Sized + Committable> From<&Commitment<T>> for TaggedBase64 {
         let mut bytes = std::vec![];
         CanonicalSerialize::serialize_uncompressed(c, &mut bytes).unwrap();
         Self::new(&T::tag(), &bytes).unwrap()
+    }
+}
+
+#[cfg(feature = "ark-serialize")]
+impl<T: ?Sized + Committable> Debug for Commitment<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", TaggedBase64::from(self))
     }
 }
 
