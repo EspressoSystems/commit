@@ -211,7 +211,7 @@ impl<T: ?Sized + Committable> From<&Commitment<T>> for TaggedBase64 {
 #[cfg(feature = "ark-serialize")]
 impl<T: ?Sized + Committable> Debug for Commitment<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", TaggedBase64::from(self))
+        <Self as Display>::fmt(self, f)
     }
 }
 
