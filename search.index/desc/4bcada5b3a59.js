@@ -1,0 +1,1 @@
+rd_("CkTag that should be used when serializing commitments to \xe2\x80\xa6AoReturns the argument unchanged.0BaCalls <code>U::from(self)</code>.0CaCreate a binding commitment to <code>self</code>.CgConsolidate trait bounds for cryptographic commitments.CcIf \xe2\x80\x9cark-serialize\xe2\x80\x9d feature enabled then add \xe2\x80\xa6BmCreate a default commitment with no preimage.")

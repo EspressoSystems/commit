@@ -1,5 +1,5 @@
 (function() {
-    var implementors = Object.fromEntries([["committable",[["impl&lt;'a, T: ?<a class=\"trait\" href=\"https://doc.rust-lang.org/1.89.0/core/marker/trait.Sized.html\" title=\"trait core::marker::Sized\">Sized</a> + <a class=\"trait\" href=\"committable/trait.Committable.html\" title=\"trait committable::Committable\">Committable</a>&gt; Arbitrary&lt;'a&gt; for <a class=\"struct\" href=\"committable/struct.Commitment.html\" title=\"struct committable::Commitment\">Commitment</a>&lt;T&gt;"]]]]);
+    var implementors = Object.fromEntries([["committable",[["impl&lt;'a, T: ?<a class=\"trait\" href=\"https://doc.rust-lang.org/1.93.1/core/marker/trait.Sized.html\" title=\"trait core::marker::Sized\">Sized</a> + <a class=\"trait\" href=\"committable/trait.Committable.html\" title=\"trait committable::Committable\">Committable</a>&gt; Arbitrary&lt;'a&gt; for <a class=\"struct\" href=\"committable/struct.Commitment.html\" title=\"struct committable::Commitment\">Commitment</a>&lt;T&gt;"]]]]);
     if (window.register_implementors) {
         window.register_implementors(implementors);
     } else {
